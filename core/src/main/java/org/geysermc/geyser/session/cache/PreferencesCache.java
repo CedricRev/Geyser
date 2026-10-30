@@ -77,6 +77,8 @@ public class PreferencesCache {
     public void updateShowCoordinates() {
         allowShowCoordinates = !session.isReducedDebugInfo() && session.getGeyser().config().gameplay().showCoordinates();
         session.sendGameRule("showcoordinates", allowShowCoordinates && prefersShowCoordinates);
+        session.sendGameRule("showdaysplayed", allowShowCoordinates && prefersShowCoordinates
+            && session.getGeyser().config().gameplay().showDaysPlayed());
     }
 
     /**
