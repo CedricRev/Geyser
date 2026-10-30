@@ -1,0 +1,37 @@
+name: Fork Spigot Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - 'master'
+
+jobs:
+  build-spigot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Geyser-Spigot
+        run: ./gradlew :spigot:build -x test
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+
+      - name: Upload Geyser-Spigot
+        uses: actions/upload-artifact@v4
+        with:
+          name: Geyser-Spigot-build-${{ github.run_number }}
+          path: bootstrap/spigot/build/libs/Geyser-Spigot.jar
+          if-no-files-found: error
