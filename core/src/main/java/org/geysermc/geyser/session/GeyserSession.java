@@ -1486,13 +1486,15 @@ public class GeyserSession implements GeyserConnection, GeyserCommandSource, Jav
         }
     }
 
+    private static final long MAX_SYNCED_TIME = (Integer.MAX_VALUE / (24000L * 8)) * (24000L * 8);
+
     public void synchronizeTime() {
         // https://minecraft.wiki/w/Day-night_cycle#24-hour_Minecraft_day
         SetTimePacket setTimePacket = new SetTimePacket();
         // We use modulus to prevent an integer overflow
         // 24000 is the range of ticks that a Minecraft day can be; we times by 8 so all moon phases are visible
         // (Last verified behavior: Bedrock 1.18.12 / Java 1.18.2)
-        setTimePacket.setTime((int) (Math.abs(dayTimeTicks) % (24000 * 8)));
+        setTimePacket.setTime((int) Math.floorMod(dayTimeTicks, MAX_SYNCED_TIME));
         this.sendUpstreamPacket(setTimePacket);
     }
 

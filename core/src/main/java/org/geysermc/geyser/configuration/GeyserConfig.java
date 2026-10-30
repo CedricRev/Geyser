@@ -437,6 +437,10 @@ public interface GeyserConfig {
         @DefaultBoolean(true)
         boolean showCoordinates();
 
+        @Comment("Controls if the days played counter is shown under the coordinates, like in Bedrock worlds.")
+        @DefaultBoolean(true)
+        boolean showDaysPlayed();
+
         @Comment("Whether Bedrock players are blocked from performing their scaffolding-style bridging.")
         boolean disableBedrockScaffolding();
 
