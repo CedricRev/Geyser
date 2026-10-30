@@ -39,12 +39,16 @@ import org.geysermc.geyser.inventory.GeyserItemStack;
 import org.geysermc.geyser.item.Items;
 import org.geysermc.geyser.scoreboard.Team;
 import org.geysermc.geyser.util.InteractionResult;
+import org.geysermc.geyser.util.InteractiveTag;
 import org.geysermc.geyser.util.MathUtils;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.EquipmentSlot;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.metadata.EntityMetadata;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.metadata.type.BooleanEntityMetadata;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.metadata.type.ByteEntityMetadata;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.player.GameMode;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.Hand;
+import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponentTypes;
+import org.geysermc.mcprotocollib.protocol.data.game.item.component.Equippable;
 
 import java.util.Optional;
 
@@ -56,6 +60,7 @@ public class ArmorStandEntity extends LivingEntity {
     private boolean isInvisible = false;
     @Getter
     private boolean isSmall = false;
+    private boolean hasArms = false;
 
     /**
      * On Java Edition, armor stands always show their name. Invisibility hides the name on Bedrock.
@@ -169,7 +174,8 @@ public class ArmorStandEntity extends LivingEntity {
 
         // The following values don't do anything on normal Bedrock.
         // But if given a resource pack, then we can use these values to control armor stand visual properties
-        setFlag(EntityFlag.ANGRY, (xd & 0x04) != 0x04); // Has arms
+        hasArms = (xd & 0x04) == 0x04;
+        setFlag(EntityFlag.ANGRY, !hasArms); // Has arms
         setFlag(EntityFlag.ADMIRING, (xd & 0x08) == 0x08); // Has no baseplate
         setFlag(EntityFlag.BABY, isSmall); // Is small (for setting head scale)
     }
@@ -256,6 +262,23 @@ public class ArmorStandEntity extends LivingEntity {
         } else {
             return InteractionResult.PASS;
         }
+    }
+
+    @Override
+    protected InteractiveTag testInteraction(Hand hand) {
+        if (isMarker || !primaryEntity || session.getGameMode() == GameMode.SPECTATOR) {
+            return InteractiveTag.NONE;
+        }
+        GeyserItemStack itemStack = session.getPlayerInventory().getItemInHand(hand);
+        if (itemStack.isEmpty() || itemStack.is(Items.NAME_TAG)) {
+            return InteractiveTag.NONE;
+        }
+        Equippable equippable = itemStack.getComponent(DataComponentTypes.EQUIPPABLE);
+        EquipmentSlot slot = equippable != null && canUseSlot(equippable.slot()) ? equippable.slot() : EquipmentSlot.MAIN_HAND;
+        if ((slot == EquipmentSlot.MAIN_HAND || slot == EquipmentSlot.OFF_HAND) && !hasArms) {
+            return InteractiveTag.NONE;
+        }
+        return InteractiveTag.EQUIP_ARMOR_STAND;
     }
 
     @Override
