@@ -81,8 +81,10 @@ import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponen
 import org.geysermc.mcprotocollib.protocol.data.game.recipe.display.slot.EmptySlotDisplay;
 import org.geysermc.mcprotocollib.protocol.data.game.recipe.display.slot.SlotDisplay;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -772,10 +774,12 @@ public abstract class InventoryTranslator<Type extends Inventory> {
         int prioritySlot = -1;
         int tempSlot;
 
-        int resultSize;
+        int resultSize = 0;
         int timesCrafted = 0;
         Int2ObjectMap<Int2IntMap> ingredientMap = new Int2ObjectOpenHashMap<>();
         CraftState craftState = CraftState.START;
+        Deque<int[]> destinations = new ArrayDeque<>();
+        boolean useShiftClick = false;
 
         ClickPlan plan = new ClickPlan(session, this, inventory);
         requestLoop:
@@ -874,13 +878,15 @@ public abstract class InventoryTranslator<Type extends Inventory> {
                     if (craftState != CraftState.INGREDIENTS && craftState != CraftState.TRANSFER) {
                         return rejectRequest(request);
                     }
+                    boolean firstTransfer = craftState != CraftState.TRANSFER;
                     craftState = CraftState.TRANSFER;
 
-                    if (transferAction.getSource().getContainerName().getContainer() != ContainerSlotType.CREATED_OUTPUT) {
-                        return rejectRequest(request);
-                    }
-                    if (transferAction.getCount() <= 0) {
-                        return rejectRequest(request);
+                    if (transferAction.getSource().getContainerName().getContainer() != ContainerSlotType.CREATED_OUTPUT
+                            || transferAction.getCount() <= 0) {
+                        if (firstTransfer) {
+                            return rejectRequest(request);
+                        }
+                        break requestLoop;
                     }
 
                     int javaSlot = bedrockSlotToJava(transferAction.getDestination());
@@ -891,16 +897,28 @@ public abstract class InventoryTranslator<Type extends Inventory> {
                                 return rejectRequest(request);
                             }
                         }
-                        break requestLoop;
-                    } else if (inventory.getItem(javaSlot).getAmount() == consumedSlots.get(javaSlot)) {
-                        prioritySlot = bedrockSlotToJava(transferAction.getDestination());
+                        useShiftClick = true;
                         break requestLoop;
                     }
+                    if (prioritySlot == -1 && inventory.getItem(javaSlot).getAmount() == consumedSlots.get(javaSlot)) {
+                        prioritySlot = javaSlot;
+                    }
+                    destinations.add(new int[] {javaSlot, transferAction.getCount()});
                     break;
                 }
                 default:
+                    if (craftState == CraftState.TRANSFER) {
+                        break requestLoop;
+                    }
                     return rejectRequest(request);
             }
+        }
+
+        if (destinations.isEmpty() || resultSize <= 0) {
+            useShiftClick = true;
+        }
+        if (!useShiftClick) {
+            plan.setCraftingResult(GeyserItemStack.from(session, output));
         }
 
         final int maxLoops = Math.min(64, timesCrafted);
@@ -927,16 +945,86 @@ public abstract class InventoryTranslator<Type extends Inventory> {
             }
 
             if (!done) {
-                //TODO: sometimes the server does not agree on this slot?
-                plan.add(Click.LEFT_SHIFT, 0, true);
+                if (useShiftClick) {
+                    //TODO: sometimes the server does not agree on this slot?
+                    plan.add(Click.LEFT_SHIFT, 0, true);
+                } else {
+                    takeCraftedItems(plan, gridSize, resultSize, destinations);
+                }
             } else {
                 break;
+            }
+        }
+        if (!useShiftClick) {
+            placeCursor(plan, destinations);
+            if (!plan.getCursor().isEmpty()) {
+                int leftoverSlot = findTempSlot(plan, plan.getCursor(), false);
+                if (leftoverSlot != -1) {
+                    plan.add(Click.LEFT, leftoverSlot);
+                }
             }
         }
 
         inventory.setItem(0, GeyserItemStack.from(session, output), session);
         plan.execute(true);
         return acceptRequest(request, makeContainerEntries(session, inventory, plan.getAffectedSlots()));
+    }
+
+    private static void takeCraftedItems(ClickPlan plan, int gridSize, int resultSize, Deque<int[]> destinations) {
+        int crafts = 0;
+        for (int slot = 1; slot <= gridSize; slot++) {
+            GeyserItemStack item = plan.getItem(slot);
+            if (!item.isEmpty()) {
+                crafts = crafts == 0 ? item.getAmount() : Math.min(crafts, item.getAmount());
+            }
+        }
+        for (int i = 0; i < crafts; i++) {
+            GeyserItemStack cursor = plan.getCursor();
+            if (!cursor.isEmpty()) {
+                int wanted = destinations.isEmpty() ? 0 : destinations.peek()[1];
+                if (cursor.getAmount() + resultSize > Math.min(cursor.getMaxStackSize(), wanted)) {
+                    placeCursor(plan, destinations);
+                    if (!plan.getCursor().isEmpty()) {
+                        int leftoverSlot = findTempSlot(plan, plan.getCursor(), false);
+                        if (leftoverSlot == -1) {
+                            return;
+                        }
+                        plan.add(Click.LEFT, leftoverSlot);
+                    }
+                }
+            }
+            plan.add(Click.LEFT, 0, true);
+        }
+    }
+
+    private static void placeCursor(ClickPlan plan, Deque<int[]> destinations) {
+        while (!plan.getCursor().isEmpty() && !destinations.isEmpty()) {
+            int[] destination = destinations.peek();
+            int slot = destination[0];
+            GeyserItemStack cursor = plan.getCursor();
+            GeyserItemStack current = plan.getItem(slot);
+            if (!current.isEmpty() && !plan.canStack(slot, cursor)) {
+                destinations.poll();
+                continue;
+            }
+            int room = current.isEmpty() ? cursor.getMaxStackSize() : current.getMaxStackSize() - current.getAmount();
+            int amount = Math.min(cursor.getAmount(), Math.min(destination[1], room));
+            if (amount <= 0) {
+                destinations.poll();
+                continue;
+            }
+            if (amount == cursor.getAmount()) {
+                plan.add(Click.LEFT, slot);
+            } else {
+                for (int i = 0; i < amount; i++) {
+                    plan.add(Click.RIGHT, slot);
+                }
+            }
+            destination[1] -= amount;
+            if (destination[1] <= 0) {
+                destinations.poll();
+            }
+        }
     }
 
     /**

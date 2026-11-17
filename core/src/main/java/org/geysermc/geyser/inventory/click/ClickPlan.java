@@ -74,6 +74,7 @@ public final class ClickPlan {
     private final InventoryTranslator<?> translator;
     private final Inventory inventory;
     private final int gridSize;
+    private GeyserItemStack craftingResult;
 
     public ClickPlan(GeyserSession session, InventoryTranslator<?> translator, Inventory inventory) {
         this.session = session;
@@ -229,6 +230,19 @@ public final class ClickPlan {
         return simulatedItems.computeIfAbsent(slot, k -> inventory.getItem(slot).copy());
     }
 
+    public void setCraftingResult(GeyserItemStack craftingResult) {
+        this.craftingResult = craftingResult;
+    }
+
+    private boolean isCraftingGridEmpty() {
+        for (int i = 1; i <= gridSize; i++) {
+            if (!isEmpty(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public void setDesiredBundleSlot(int desiredBundleSlot) {
         this.desiredBundleSlot = desiredBundleSlot;
     }
@@ -288,6 +302,9 @@ public final class ClickPlan {
 
         GeyserItemStack clicked = getItem(action.slot);
         if (translator.getSlotType(action.slot) == SlotType.OUTPUT) {
+            if (clicked.isEmpty() && craftingResult != null && !isCraftingGridEmpty()) {
+                clicked = craftingResult.copy();
+            }
             switch (action.click) {
                 case LEFT, RIGHT -> {
                     if (cursor.isEmpty() && !clicked.isEmpty()) {
@@ -297,6 +314,9 @@ public final class ClickPlan {
                     }
                     reduceCraftingGrid(false);
                     setItem(action.slot, GeyserItemStack.EMPTY); // Matches Java Edition 1.18.1
+                    if (craftingResult != null && !isCraftingGridEmpty()) {
+                        simulatedItems.put(action.slot, craftingResult.copy());
+                    }
                 }
                 case LEFT_SHIFT -> reduceCraftingGrid(true);
             }
