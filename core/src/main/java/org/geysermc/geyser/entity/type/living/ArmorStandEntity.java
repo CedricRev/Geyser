@@ -278,7 +278,7 @@ public class ArmorStandEntity extends LivingEntity {
         if ((slot == EquipmentSlot.MAIN_HAND || slot == EquipmentSlot.OFF_HAND) && !hasArms) {
             return InteractiveTag.NONE;
         }
-        return InteractiveTag.EQUIP_ARMOR_STAND;
+        return InteractiveTag.ARMORSTAND_EQUIP;
     }
 
     @Override
