@@ -100,6 +100,7 @@ public class PlayerListUtils {
         // as Bedrock expects to get back its own provided UUID
         if (session.getPlayerEntity().uuid().equals(uuid)) {
             entry = new PlayerListPacket.Entry(session.getAuthData().uuid());
+            username = session.bedrockUsername();
         } else {
             entry = new PlayerListPacket.Entry(uuid);
         }

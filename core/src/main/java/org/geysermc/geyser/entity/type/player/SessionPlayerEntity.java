@@ -181,6 +181,19 @@ public class SessionPlayerEntity extends PlayerEntity {
     }
 
     @Override
+    public String nametagName() {
+        return session.bedrockUsername();
+    }
+
+    @Override
+    public void setUsername(String username) {
+        super.setUsername(username);
+        String shown = nametagName();
+        this.nametag = shown;
+        metadata.put(EntityDataTypes.NAME, shown);
+    }
+
+    @Override
     protected void setClientSideSilent() {
         // Do nothing, since we want the session player to hear their own footstep sounds for example.
     }
