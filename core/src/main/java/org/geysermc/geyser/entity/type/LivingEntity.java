@@ -35,9 +35,11 @@ import org.cloudburstmc.math.vector.Vector3f;
 import org.cloudburstmc.math.vector.Vector3i;
 import org.cloudburstmc.protocol.bedrock.data.AttributeData;
 import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes;
+import org.cloudburstmc.protocol.bedrock.data.entity.EntityEventType;
 import org.cloudburstmc.protocol.bedrock.data.entity.EntityFlag;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ContainerId;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ItemData;
+import org.cloudburstmc.protocol.bedrock.packet.EntityEventPacket;
 import org.cloudburstmc.protocol.bedrock.packet.MobArmorEquipmentPacket;
 import org.cloudburstmc.protocol.bedrock.packet.MobEquipmentPacket;
 import org.cloudburstmc.protocol.bedrock.packet.MoveEntityDeltaPacket;
@@ -221,6 +223,13 @@ public class LivingEntity extends Entity implements Tickable {
         if (!passengers.isEmpty() || this == session.getSpectatedEntity()) {
             setNametag("", false);
         }
+    }
+
+    protected void sendAttackStart() {
+        EntityEventPacket entityEventPacket = new EntityEventPacket();
+        entityEventPacket.setRuntimeEntityId(geyserId);
+        entityEventPacket.setType(EntityEventType.ATTACK_START);
+        session.sendUpstreamPacket(entityEventPacket);
     }
 
     public void setLivingEntityFlags(ByteEntityMetadata entityMetadata) {

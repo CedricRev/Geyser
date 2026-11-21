@@ -52,6 +52,15 @@ public class AbstractSkeletonEntity extends MonsterEntity {
     }
 
     @Override
+    public void setLivingEntityFlags(ByteEntityMetadata entityMetadata) {
+        boolean wasUsingItem = getFlag(EntityFlag.USING_ITEM);
+        super.setLivingEntityFlags(entityMetadata);
+        if (wasUsingItem && !getFlag(EntityFlag.USING_ITEM) && isHolding(Items.BOW)) {
+            sendAttackStart();
+        }
+    }
+
+    @Override
     public boolean useArmSwingAttack() {
         return true;
     }
