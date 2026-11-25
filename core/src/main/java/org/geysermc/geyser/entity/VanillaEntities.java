@@ -128,6 +128,7 @@ import org.geysermc.geyser.entity.type.living.monster.BoggedEntity;
 import org.geysermc.geyser.entity.type.living.monster.BreezeEntity;
 import org.geysermc.geyser.entity.type.living.monster.CreakingEntity;
 import org.geysermc.geyser.entity.type.living.monster.CreeperEntity;
+import org.geysermc.geyser.entity.type.living.monster.DrownedEntity;
 import org.geysermc.geyser.entity.type.living.monster.ElderGuardianEntity;
 import org.geysermc.geyser.entity.type.living.monster.EnderDragonEntity;
 import org.geysermc.geyser.entity.type.living.monster.EnderDragonPartEntity;
@@ -206,7 +207,7 @@ public final class VanillaEntities {
     public static final VanillaEntityType<DolphinEntity> DOLPHIN;
     public static final VanillaEntityType<ChestedHorseEntity> DONKEY;
     public static final VanillaEntityType<FireballEntity> DRAGON_FIREBALL;
-    public static final VanillaEntityType<ZombieEntity> DROWNED;
+    public static final VanillaEntityType<DrownedEntity> DROWNED;
     public static final VanillaEntityType<ThrowableEggEntity> EGG;
     public static final VanillaEntityType<ElderGuardianEntity> ELDER_GUARDIAN;
     public static final VanillaEntityType<EndermanEntity> ENDERMAN;
@@ -903,7 +904,7 @@ public final class VanillaEntities {
                     .bedrockIdentifier("minecraft:zombie_pigman")
                     .build();
 
-            DROWNED = VanillaEntityType.inherited(ZOMBIE.factory(), ZOMBIE)
+            DROWNED = VanillaEntityType.inherited(DrownedEntity::new, ZOMBIE)
                     .type(EntityType.DROWNED)
                     .height(1.95f).width(0.6f)
                     .build();

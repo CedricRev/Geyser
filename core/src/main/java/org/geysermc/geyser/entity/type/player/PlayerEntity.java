@@ -44,6 +44,7 @@ import org.geysermc.geyser.entity.spawn.EntitySpawnContext;
 import org.geysermc.geyser.entity.type.Entity;
 import org.geysermc.geyser.entity.type.living.animal.tameable.ParrotEntity;
 import org.geysermc.geyser.inventory.GeyserItemStack;
+import org.geysermc.geyser.session.GeyserSession;
 import org.geysermc.geyser.util.GliderUtils;
 import org.geysermc.geyser.util.PlayerListUtils;
 import org.geysermc.mcprotocollib.auth.GameProfile;
@@ -56,6 +57,7 @@ import org.geysermc.mcprotocollib.protocol.data.game.entity.metadata.type.FloatE
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -101,6 +103,29 @@ public class PlayerEntity extends AvatarEntity implements GeyserPlayerEntity {
         // Since 1.20.60, the nametag does not show properly if this is not set :/
         // The nametag does disappear properly when the player is invisible though.
         setNametagAlwaysShow(true);
+    }
+
+    @Override
+    public void spawnEntity() {
+        if (Objects.equals(nametag, username)) {
+            String shown = nametagName();
+            if (!shown.equals(username)) {
+                this.nametag = shown;
+                metadata.put(EntityDataTypes.NAME, shown);
+            }
+        }
+        super.spawnEntity();
+    }
+
+    public String nametagName() {
+        if (uuid != null && username != null) {
+            for (GeyserSession other : GeyserImpl.getInstance().onlineConnections()) {
+                if (uuid.equals(other.javaUuid())) {
+                    return other.bedrockUsername();
+                }
+            }
+        }
+        return username;
     }
 
     @Override
@@ -254,7 +279,7 @@ public class PlayerEntity extends AvatarEntity implements GeyserPlayerEntity {
         // setNametag is called again with applyTeamStyling on false
         if (nametag == null && !applyTeamStyling) {
             // nametag = null means reset, so reset it back to username
-            nametag = username;
+            nametag = nametagName();
         }
         super.setNametag(nametag, applyTeamStyling);
     }

@@ -243,8 +243,8 @@ public abstract class AvatarEntity extends LivingEntity implements GeyserAvatarE
 
     @Override
     public String getDisplayName(boolean includeStandardName) {
-        if (this instanceof PlayerEntity) {
-            return username;
+        if (this instanceof PlayerEntity player) {
+            return player.nametagName();
         }
         return super.getDisplayName(includeStandardName);
     }
